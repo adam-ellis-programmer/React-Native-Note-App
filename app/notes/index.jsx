@@ -1,40 +1,60 @@
-import { useState } from 'react'
-import {
-  FlatList,
-  Modal,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
-} from 'react-native'
+import { useEffect, useState } from 'react'
+import { Alert, StyleSheet, Text, TouchableOpacity, View } from 'react-native'
+import AddNoteModal from '../../components/AddNoteModal'
+import NoteList from '../../components/NoteList'
+import noteService from '../../services/noteService'
 
-function addNote() {
-  //
-}
 const NoteScreen = () => {
-  const [notes, setNotes] = useState([
-    { id: 1, text: 'first note' },
-    { id: 2, text: 'second note' },
-    { id: 3, text: 'third note' },
-  ])
+  const [notes, setNotes] = useState([])
+  const [loading, setloading] = useState(true)
+  const [error, seterror] = useState(null)
+
+  useEffect(() => {
+    fetchNotes()
+    return () => {}
+  }, [])
+
+  
+  const fetchNotes = async () => {
+    try {
+      setloading(true)
+      const response = await noteService.getNotes()
+
+      if (response.error) {
+        seterror(response.error)
+        Alert.alert('Error', response.error) // Fixed Alert usage
+      } else {
+        setNotes(response.data || response) // Handle different response formats
+        seterror(null)
+      }
+    } catch (error) {
+      console.error('Error in fetchNotes:', error)
+      seterror(error.message)
+      Alert.alert('Error', 'Failed to fetch notes')
+    } finally {
+      setloading(false) // Always set loading to false
+    }
+  }
 
   const [modalVisible, setModalVisible] = useState(false)
   const [newNote, setNewNote] = useState('')
 
   console.log('Notes array:', notes)
 
+  // ADD NEW NOTE:
+  function addNote() {
+    if (newNote.trim() === '') return
+
+    setNotes((prevNotes) => [...prevNotes, { id: Date.now(), text: newNote }])
+    setNewNote('')
+    setModalVisible(false)
+  }
+
   return (
     <View style={styles.container}>
-      <FlatList
-        data={notes}
-        keyExtractor={(item) => item.id.toString()}
-        renderItem={({ item }) => (
-          <View style={styles.noteItem}>
-            <Text style={styles.noteText}>{item.text}</Text>
-          </View>
-        )}
-      />
+      {/* Note list  */}
+      <NoteList notes={notes} />
+
       <TouchableOpacity
         style={styles.addButton}
         onPress={() => setModalVisible(true)}
@@ -43,44 +63,13 @@ const NoteScreen = () => {
       </TouchableOpacity>
 
       {/* Modal */}
-      <Modal
-        visible={modalVisible}
-        animationType='slide'
-        transparent
-        onRequestClose={() => setModalVisible(false)}
-      >
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>Add a new note</Text>
-
-            <TextInput
-              style={styles.input}
-              placeholder='Enter Notes ...'
-              placeholderTextColor='#aaa'
-            />
-
-            <View style={styles.modalButtons}>
-              {/* CLOSE BUTTON */}
-              <TouchableOpacity
-                style={styles.cancelButton}
-                onPress={() => setModalVisible(false)}
-              >
-                <Text style={styles.cancelButtonText}>close</Text>
-              </TouchableOpacity>
-
-              {/* ADD BUTTON */}
-              <TouchableOpacity
-                style={styles.cancelButton}
-                onPress={() => setModalVisible(false)}
-              >
-                <Text style={styles.saveButtonText} onPress={addNote}>
-                  Save
-                </Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
-      </Modal>
+      <AddNoteModal
+        modalVisible={modalVisible}
+        setModalVisible={setModalVisible}
+        newNote={newNote}
+        setNewNote={setNewNote}
+        addNote={addNote}
+      />
     </View>
   )
 }
@@ -92,16 +81,6 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
   },
 
-  noteItem: {
-    backgroundColor: '#f5f5f5',
-    padding: 15,
-    borderRadius: 10,
-    marginVertical: 5,
-  },
-  noteText: {
-    fontSize: 18,
-    fontWeight: '600',
-  },
   addButton: {
     position: 'absolute',
     bottom: 20,
@@ -117,23 +96,8 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: 'bold',
   },
-  errorText: {
-    color: 'red',
-    textAlign: 'center',
-    marginBottom: 10,
-    fontSize: 16,
-  },
-
-  noNotesText: {
-    textAlign: 'center',
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#555',
-    marginTop: 15,
-  },
 
   // MODAL
-
   modalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.6)',
