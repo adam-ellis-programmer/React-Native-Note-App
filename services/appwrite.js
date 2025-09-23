@@ -1,6 +1,6 @@
 import { Platform } from 'react-native'
 import { Account, Client, Databases } from 'react-native-appwrite'
-
+// THIS IS THE SDK CODE 
 export const appwriteConfig = {
   endpoint: process.env.EXPO_PUBLIC_APPWRITE_ENDPOINT,
   platform: 'com.yourcompany.notesapp',

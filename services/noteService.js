@@ -1,4 +1,4 @@
-import { ID } from 'react-native-appwrite'
+import { ID } from 'react-native-appwrite' // from the sdk 
 import databaseService from './databaseService'
 
 // Appwrite database and collection id
@@ -22,7 +22,7 @@ const noteService = {
 
     const data = {
       text: text,
-      createdAt: new Date().toISOString(),
+      $createdAt: new Date().toISOString(),
     }
 
     const response = await databaseService.createDocument(

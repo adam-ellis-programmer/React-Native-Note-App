@@ -14,7 +14,6 @@ const NoteScreen = () => {
     return () => {}
   }, [])
 
-  
   const fetchNotes = async () => {
     try {
       setloading(true)
@@ -42,10 +41,19 @@ const NoteScreen = () => {
   console.log('Notes array:', notes)
 
   // ADD NEW NOTE:
-  function addNote() {
+  async function addNote() {
     if (newNote.trim() === '') return
 
-    setNotes((prevNotes) => [...prevNotes, { id: Date.now(), text: newNote }])
+    // setNotes((prevNotes) => [...prevNotes, { id: Date.now(), text: newNote }])
+
+    const response = await noteService.addNote(newNote)
+
+    if (response.error) {
+      Alert.alert('Error', response.error)
+    } else {
+      setNotes([...notes, response.data])
+    }
+
     setNewNote('')
     setModalVisible(false)
   }
