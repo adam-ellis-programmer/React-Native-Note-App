@@ -1,10 +1,22 @@
+import { useRouter } from 'expo-router'
 import { useEffect, useState } from 'react'
-import { Alert, StyleSheet, Text, TouchableOpacity, View } from 'react-native'
+import {
+  ActivityIndicator,
+  Alert,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from 'react-native'
 import AddNoteModal from '../../components/AddNoteModal'
 import NoteList from '../../components/NoteList'
+import { useAuth } from '../../contexts/AuthContext'
 import noteService from '../../services/noteService'
 
 const NoteScreen = () => {
+  const router = useRouter()
+  const { user, loading: authLoading } = useAuth()
+  
   const [notes, setNotes] = useState([])
   const [loading, setloading] = useState(true)
   const [error, seterror] = useState(null)
@@ -58,10 +70,57 @@ const NoteScreen = () => {
     setModalVisible(false)
   }
 
+  const onDeleteNote = (id) => {
+    Alert.alert('Delete Note?', 'Are you sure you want to delte this note?', [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Delete',
+        style: 'desturctive',
+        onPress: async () => {
+          const response = await noteService.deleteNote(id)
+          if (response.error) {
+            Alert.alert('Error: ', response.error)
+          } else {
+            setNotes(notes.filter((item) => item.$id !== id))
+          }
+        },
+      },
+    ])
+    console.log('deleteing...', id)
+  }
+
+  // Edit Note
+  const editNote = async (id, newText) => {
+    if (!newText.trim()) {
+      Alert.alert('Error', 'Note text cannot be empty')
+      return
+    }
+
+    const response = await noteService.updateNote(id, newText)
+    if (response.error) {
+      Alert.alert('Error', response.error)
+    } else {
+      // prettier-ignore
+      setNotes((prevNotes) => prevNotes.map((note) =>
+          note.$id === id ? { ...note, text: response.data.text } : note
+        )
+      )
+    }
+  }
+
   return (
     <View style={styles.container}>
       {/* Note list  */}
-      <NoteList notes={notes} />
+      {/* <NoteList notes={notes} /> */}
+
+      {loading ? (
+        <ActivityIndicator size={`large`} color='#007bff' />
+      ) : (
+        <>
+          {error && <Text style={styles.errorText}>{error}</Text>}
+          <NoteList notes={notes} onDelete={onDeleteNote} onEdit={editNote} />
+        </>
+      )}
 
       <TouchableOpacity
         style={styles.addButton}
@@ -158,6 +217,13 @@ const styles = StyleSheet.create({
   saveButtonText: {
     fontSize: 16,
     color: '#fff',
+  },
+
+  errorText: {
+    color: 'red',
+    textAlign: 'center',
+    marginBottom: 10,
+    fontSize: 16,
   },
 })
 

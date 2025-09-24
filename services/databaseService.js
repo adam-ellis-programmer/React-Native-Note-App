@@ -41,7 +41,7 @@ const databaseService = {
     } catch (error) {
       console.error('Error deleting document', error.message)
       return {
-        error: error.message,
+        error: error.message, 
       }
     }
   },

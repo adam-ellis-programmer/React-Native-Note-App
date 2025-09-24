@@ -1,3 +1,4 @@
+import { AuthProvider } from '@/contexts/AuthContext'
 import { Stack } from 'expo-router'
 import { StyleSheet } from 'react-native'
 
@@ -18,26 +19,28 @@ const styles = StyleSheet.create({
 
 export default function RootLayout() {
   return (
-    <Stack
-      screenOptions={{
-        headerStyle: styles.header,
-        headerTintColor: '#fff',
-        headerTitleStyle: styles.headerTitle,
-        contentStyle: styles.content,
-      }}
-    >
-      <Stack.Screen
-        name='index'
-        options={{
-          title: 'Home Screen Test',
+    <AuthProvider>
+      <Stack
+        screenOptions={{
+          headerStyle: styles.header,
+          headerTintColor: '#fff',
+          headerTitleStyle: styles.headerTitle,
+          contentStyle: styles.content,
         }}
-      />
-      <Stack.Screen
-        name='notes'
-        options={{
-          headerTitle: 'Notes Screen',
-        }}
-      />
-    </Stack>
+      >
+        <Stack.Screen
+          name='index'
+          options={{
+            title: 'Home Screen Test',
+          }}
+        />
+        <Stack.Screen
+          name='notes'
+          options={{
+            headerTitle: 'Notes Screen',
+          }}
+        />
+      </Stack>
+    </AuthProvider>
   )
 }

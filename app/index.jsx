@@ -1,11 +1,7 @@
 import PostImage from '@/assets/images/post-it.png'
 import { useRouter } from 'expo-router'
 import { Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native'
-/**
- * view is like a div
- * text is like a paragraph
- * @returns
- */
+
 export default function HomeScreen() {
   const router = useRouter()
   return (
