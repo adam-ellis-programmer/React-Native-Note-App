@@ -39,19 +39,20 @@ const NoteScreen = () => {
     try {
       setLoading(true)
       const response = await noteService.getNotes(user.$id)
+      console.log(response)
 
       if (response.error) {
         setError(response.error)
         Alert.alert('Error', response.error)
-        setNotes([]) // Add this line - set empty array on error
+        setNotes([])
       } else {
-        setNotes(response.data || []) // Ensure it's always an array
+        setNotes(response || [])
         setError(null)
-      }
+      } 
     } catch (error) {
       console.error('Error in fetchNotes:', error)
       setError(error.message)
-      setNotes([]) // Add this line - set empty array on catch
+      setNotes([])
       Alert.alert('Error', 'Failed to fetch notes')
     } finally {
       setLoading(false)
@@ -115,6 +116,11 @@ const NoteScreen = () => {
     }
   }
 
+  const goToGallery = () => {
+    router.push('/gallery')
+    console.log('Navigating to gallery')
+  }
+
   return (
     <View style={styles.container}>
       {loading ? (
@@ -136,6 +142,10 @@ const NoteScreen = () => {
         onPress={() => setModalVisible(true)}
       >
         <Text style={styles.addButtonText}>+ Add Note</Text>
+      </TouchableOpacity>
+
+      <TouchableOpacity style={styles.galleryButton} onPress={goToGallery}>
+        <Text style={styles.galleryButtonText}>📷 Gallery</Text>
       </TouchableOpacity>
 
       {/* Modal */}
@@ -169,6 +179,21 @@ const styles = StyleSheet.create({
   addButtonText: {
     color: '#fff',
     fontSize: 18,
+    fontWeight: 'bold',
+  },
+  galleryButton: {
+    position: 'absolute',
+    bottom: 80,
+    right: 20,
+    backgroundColor: '#28a745',
+    padding: 12,
+    borderRadius: 8,
+    alignItems: 'center',
+    minWidth: 100,
+  },
+  galleryButtonText: {
+    color: '#fff',
+    fontSize: 16,
     fontWeight: 'bold',
   },
   errorText: {
