@@ -1,3 +1,7 @@
+import AddNoteModal from '@/components/AddNoteModal'
+import NoteList from '@/components/NoteList'
+import { useAuth } from '@/contexts/AuthContext'
+import noteService from '@/services/noteService'
 import { useRouter } from 'expo-router'
 import { useEffect, useState } from 'react'
 import {
@@ -8,57 +12,57 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native'
-import AddNoteModal from '../../components/AddNoteModal'
-import NoteList from '../../components/NoteList'
-import { useAuth } from '../../contexts/AuthContext'
-import noteService from '../../services/noteService'
 
 const NoteScreen = () => {
   const router = useRouter()
   const { user, loading: authLoading } = useAuth()
-  
+
   const [notes, setNotes] = useState([])
-  const [loading, setloading] = useState(true)
-  const [error, seterror] = useState(null)
+  const [modalVisible, setModalVisible] = useState(false)
+  const [newNote, setNewNote] = useState('')
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(null)
 
   useEffect(() => {
-    fetchNotes()
-    return () => {}
-  }, [])
+    if (!authLoading && !user) {
+      router.replace('/auth')
+    }
+  }, [user, authLoading])
+
+  useEffect(() => {
+    if (user) {
+      fetchNotes()
+    }
+  }, [user])
 
   const fetchNotes = async () => {
     try {
-      setloading(true)
-      const response = await noteService.getNotes()
+      setLoading(true)
+      const response = await noteService.getNotes(user.$id)
 
       if (response.error) {
-        seterror(response.error)
-        Alert.alert('Error', response.error) // Fixed Alert usage
+        setError(response.error)
+        Alert.alert('Error', response.error)
+        setNotes([]) // Add this line - set empty array on error
       } else {
-        setNotes(response.data || response) // Handle different response formats
-        seterror(null)
+        setNotes(response.data || []) // Ensure it's always an array
+        setError(null)
       }
     } catch (error) {
       console.error('Error in fetchNotes:', error)
-      seterror(error.message)
+      setError(error.message)
+      setNotes([]) // Add this line - set empty array on catch
       Alert.alert('Error', 'Failed to fetch notes')
     } finally {
-      setloading(false) // Always set loading to false
+      setLoading(false)
     }
   }
 
-  const [modalVisible, setModalVisible] = useState(false)
-  const [newNote, setNewNote] = useState('')
-
-  console.log('Notes array:', notes)
-
-  // ADD NEW NOTE:
-  async function addNote() {
+  // Add New Note
+  const addNote = async () => {
     if (newNote.trim() === '') return
 
-    // setNotes((prevNotes) => [...prevNotes, { id: Date.now(), text: newNote }])
-
-    const response = await noteService.addNote(newNote)
+    const response = await noteService.addNote(user.$id, newNote)
 
     if (response.error) {
       Alert.alert('Error', response.error)
@@ -70,23 +74,26 @@ const NoteScreen = () => {
     setModalVisible(false)
   }
 
-  const onDeleteNote = (id) => {
-    Alert.alert('Delete Note?', 'Are you sure you want to delte this note?', [
-      { text: 'Cancel', style: 'cancel' },
+  // Delete Note
+  const deleteNote = async (id) => {
+    Alert.alert('Delete Note', 'Are you sure you want to delete this note?', [
+      {
+        text: 'Cancel',
+        style: 'cancel',
+      },
       {
         text: 'Delete',
-        style: 'desturctive',
+        style: 'destructive',
         onPress: async () => {
           const response = await noteService.deleteNote(id)
           if (response.error) {
-            Alert.alert('Error: ', response.error)
+            Alert.alert('Error', response.error)
           } else {
-            setNotes(notes.filter((item) => item.$id !== id))
+            setNotes(notes.filter((note) => note.$id !== id))
           }
         },
       },
     ])
-    console.log('deleteing...', id)
   }
 
   // Edit Note
@@ -100,8 +107,8 @@ const NoteScreen = () => {
     if (response.error) {
       Alert.alert('Error', response.error)
     } else {
-      // prettier-ignore
-      setNotes((prevNotes) => prevNotes.map((note) =>
+      setNotes((prevNotes) =>
+        prevNotes.map((note) =>
           note.$id === id ? { ...note, text: response.data.text } : note
         )
       )
@@ -110,15 +117,17 @@ const NoteScreen = () => {
 
   return (
     <View style={styles.container}>
-      {/* Note list  */}
-      {/* <NoteList notes={notes} /> */}
-
       {loading ? (
-        <ActivityIndicator size={`large`} color='#007bff' />
+        <ActivityIndicator size='large' color='#007bff' />
       ) : (
         <>
           {error && <Text style={styles.errorText}>{error}</Text>}
-          <NoteList notes={notes} onDelete={onDeleteNote} onEdit={editNote} />
+
+          {notes.length === 0 ? (
+            <Text style={styles.noNotesText}>You have no notes</Text>
+          ) : (
+            <NoteList notes={notes} onDelete={deleteNote} onEdit={editNote} />
+          )}
         </>
       )}
 
@@ -126,7 +135,7 @@ const NoteScreen = () => {
         style={styles.addButton}
         onPress={() => setModalVisible(true)}
       >
-        <Text style={styles.addButtonText}>+New Note</Text>
+        <Text style={styles.addButtonText}>+ Add Note</Text>
       </TouchableOpacity>
 
       {/* Modal */}
@@ -147,7 +156,6 @@ const styles = StyleSheet.create({
     padding: 20,
     backgroundColor: '#fff',
   },
-
   addButton: {
     position: 'absolute',
     bottom: 20,
@@ -163,67 +171,18 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: 'bold',
   },
-
-  // MODAL
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.6)',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  modalContent: {
-    backgroundColor: '#fff',
-    padding: 20,
-    borderRadius: 10,
-    width: '80%',
-  },
-  modalTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    marginBottom: 10,
-    textAlign: 'center',
-  },
-  input: {
-    borderWidth: 1,
-    borderColor: '#ccc',
-    borderRadius: 8,
-    padding: 10,
-    fontSize: 16,
-    marginBottom: 15,
-  },
-  modalButtons: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-  },
-  cancelButton: {
-    backgroundColor: '#ccc',
-    padding: 10,
-    borderRadius: 5,
-    flex: 1,
-    marginRight: 10,
-    alignItems: 'center',
-  },
-  cancelButtonText: {
-    fontSize: 16,
-    color: '#333',
-  },
-  saveButton: {
-    backgroundColor: '#007bff',
-    padding: 10,
-    borderRadius: 5,
-    flex: 1,
-    alignItems: 'center',
-  },
-  saveButtonText: {
-    fontSize: 16,
-    color: '#fff',
-  },
-
   errorText: {
     color: 'red',
     textAlign: 'center',
     marginBottom: 10,
     fontSize: 16,
+  },
+  noNotesText: {
+    textAlign: 'center',
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#555',
+    marginTop: 15,
   },
 })
 

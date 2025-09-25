@@ -1,22 +1,47 @@
-import PostImage from '@/assets/images/post-it.png'
+import { useEffect } from 'react'
+import {
+  Text,
+  View,
+  StyleSheet,
+  Image,
+  TouchableOpacity,
+  ActivityIndicator,
+} from 'react-native'
+import PostItImage from '@/assets/images/post-it.png'
 import { useRouter } from 'expo-router'
-import { Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native'
+import { useAuth } from '@/contexts/AuthContext'
 
-export default function HomeScreen() {
+const HomeScreen = () => {
+  const { user, loading } = useAuth()
   const router = useRouter()
+
+  useEffect(() => {
+    if (!loading && user) {
+      router.replace('/notes')
+    }
+  }, [user, loading])
+
+  if (loading) {
+    return (
+      <View style={styles.centeredContainter}>
+        <ActivityIndicator size='large' color='#007bff' />
+      </View>
+    )
+  }
+
   return (
     <View style={styles.container}>
-      <Image source={PostImage} style={styles.image} />
-      <Text style={styles.title}>Welcome to notes app.</Text>
-      <Text style={styles.subTitle}>
-        capture your thoughts anytime anywhere{' '}
+      <Image source={PostItImage} style={styles.image} />
+      <Text style={styles.title}>Welcome To Notes App</Text>
+      <Text style={styles.subtitle}>
+        Capture your thoughts anytime, anywhere
       </Text>
 
       <TouchableOpacity
         style={styles.button}
-        onPress={() => router.push(`/notes`)}
+        onPress={() => router.push('/notes')}
       >
-        <Text style={styles.buttonText}>Get Started!</Text>
+        <Text style={styles.buttonText}>Get Started</Text>
       </TouchableOpacity>
     </View>
   )
@@ -54,7 +79,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 25,
     borderRadius: 8,
     alignItems: 'center',
-    marginTop: 20,
   },
   buttonText: {
     color: '#fff',
@@ -67,3 +91,5 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
 })
+
+export default HomeScreen

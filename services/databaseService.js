@@ -2,9 +2,9 @@ import { databases } from './appwrite'
 
 const databaseService = {
   // List Documents
-  async listDocuments(dbId, colId) {
+  async listDocuments(dbId, colId, queries = []) {
     try {
-      const response = await databases.listDocuments(dbId, colId)
+      const response = await databases.listDocuments(dbId, colId, queries)
       return response.documents || []
     } catch (error) {
       console.error('Error fetching documents:', error.message)
@@ -41,7 +41,7 @@ const databaseService = {
     } catch (error) {
       console.error('Error deleting document', error.message)
       return {
-        error: error.message, 
+        error: error.message,
       }
     }
   },
