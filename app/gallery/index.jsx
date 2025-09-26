@@ -1,6 +1,6 @@
 // app/gallery/index.jsx
 import { useRouter } from 'expo-router'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import {
   Image,
   ScrollView,
@@ -10,6 +10,7 @@ import {
   View,
 } from 'react-native'
 import AddImageModal from '../../components/AddImageModal'
+import galleryService from '../../services/galleryService'
 
 export default function Gallery() {
   const router = useRouter()
@@ -35,16 +36,72 @@ export default function Gallery() {
     },
   ])
 
-  const handleAddImage = async (newImage) => {
+  // Load uploaded images from Appwrite on component mount
+  useEffect(() => {
+    loadUploadedImages()
+  }, [])
+
+  const loadUploadedImages = async () => {
+    try {
+      const result = await galleryService.testConnection()
+      console.log('Connection test result:', result)
+
+      if (result.success && result.files && result.files.files) {
+        const uploadedImages = result.files.files.map((file) => ({
+          id: file.$id,
+          fileId: file.$id,
+          uri: galleryService.getImageUrl(file.$id),
+          caption: file.name || 'Uploaded Image',
+          isAsset: false,
+        }))
+
+        // Add uploaded images to the existing static images
+        setImages((prevImages) => [
+          ...prevImages.filter((img) => img.isAsset), // Keep static assets
+          ...uploadedImages, // Add uploaded images
+        ])
+      }
+    } catch (error) {
+      console.error('Error loading uploaded images:', error)
+    }
+  }
+
+  const handleAddImage = async (newImageData) => {
+    console.log('Received new image data:', newImageData)
+
+    // Create image object for display
     const imageData = {
-      id: Date.now().toString(),
-      uri: newImage.uri,
-      caption: newImage.caption,
+      id: newImageData.fileId,
+      fileId: newImageData.fileId,
+      uri: galleryService.getImageUrl(newImageData.fileId),
+      caption: newImageData.caption,
       isAsset: false,
     }
 
+    // Add to images state
     setImages((prevImages) => [...prevImages, imageData])
-    console.log('Image added:', imageData)
+    console.log('Image added to gallery:', imageData)
+  }
+
+  const handleDeleteImage = async (imageId, isAsset) => {
+    if (isAsset) {
+      // Don't delete asset images
+      return
+    }
+
+    try {
+      const result = await galleryService.deleteImage(imageId)
+      if (result.success) {
+        setImages((prevImages) =>
+          prevImages.filter((img) => img.id !== imageId)
+        )
+        console.log('Image deleted successfully')
+      } else {
+        console.error('Failed to delete image:', result.error)
+      }
+    } catch (error) {
+      console.error('Error deleting image:', error)
+    }
   }
 
   return (
@@ -67,6 +124,16 @@ export default function Gallery() {
               resizeMode='cover'
             />
             <Text style={styles.imageCaption}>{item.caption}</Text>
+
+            {/* Show delete button only for uploaded images */}
+            {!item.isAsset && (
+              <TouchableOpacity
+                style={styles.deleteBtn}
+                onPress={() => handleDeleteImage(item.id, item.isAsset)}
+              >
+                <Text style={styles.deleteBtnText}>Delete</Text>
+              </TouchableOpacity>
+            )}
           </View>
         ))}
       </View>
@@ -116,6 +183,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#666',
     textAlign: 'center',
+    marginBottom: 10,
   },
   addImgBtn: {
     marginBottom: 20,
@@ -127,6 +195,17 @@ const styles = StyleSheet.create({
     padding: 15,
     borderRadius: 8,
     fontSize: 16,
+    fontWeight: 'bold',
+  },
+  deleteBtn: {
+    backgroundColor: '#ff4444',
+    paddingHorizontal: 15,
+    paddingVertical: 8,
+    borderRadius: 5,
+  },
+  deleteBtnText: {
+    color: 'white',
+    fontSize: 14,
     fontWeight: 'bold',
   },
 })

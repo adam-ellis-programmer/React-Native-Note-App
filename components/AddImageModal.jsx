@@ -1,33 +1,43 @@
 // components/AddImageModal.jsx
-import React, { useState } from 'react';
+import * as ImagePicker from 'expo-image-picker'
+import { useEffect, useState } from 'react'
 import {
+  Alert,
+  Image,
   Modal,
-  View,
+  StyleSheet,
   Text,
   TextInput,
   TouchableOpacity,
-  StyleSheet,
-  Alert,
-  Image,
-} from 'react-native';
-import * as ImagePicker from 'expo-image-picker';
+  View,
+} from 'react-native'
+import galleryService from '../services/galleryService'
 
-const AddImageModal = ({ 
-  modalVisible, 
-  setModalVisible, 
-  onAddImage 
-}) => {
-  const [imageUri, setImageUri] = useState(null);
-  const [caption, setCaption] = useState('');
-  const [loading, setLoading] = useState(false);
+const AddImageModal = ({ modalVisible, setModalVisible, onAddImage }) => {
+  const [imageUri, setImageUri] = useState(null)
+  const [caption, setCaption] = useState('')
+  const [loading, setLoading] = useState(false)
+
+  useEffect(() => {
+    const getData = async () => {
+      const data = await galleryService.testConnection()
+      console.log('test connection data------------>', data)
+    }
+    getData()
+    return () => {}
+  }, [])
 
   const pickImage = async () => {
     // Request permission
-    const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    
+    const permissionResult =
+      await ImagePicker.requestMediaLibraryPermissionsAsync()
+
     if (permissionResult.granted === false) {
-      Alert.alert('Permission Required', 'Permission to access camera roll is required!');
-      return;
+      Alert.alert(
+        'Permission Required',
+        'Permission to access camera roll is required!'
+      )
+      return
     }
 
     // Launch image picker
@@ -36,74 +46,114 @@ const AddImageModal = ({
       allowsEditing: true,
       aspect: [1, 1],
       quality: 0.8,
-    });
+    })
 
     if (!result.canceled) {
-      setImageUri(result.assets[0].uri);
+      setImageUri(result.assets[0].uri)
     }
-  };
+  }
 
   const takePhoto = async () => {
     // Request camera permission
-    const permissionResult = await ImagePicker.requestCameraPermissionsAsync();
-    
+    const permissionResult = await ImagePicker.requestCameraPermissionsAsync()
+
     if (permissionResult.granted === false) {
-      Alert.alert('Permission Required', 'Permission to access camera is required!');
-      return;
+      Alert.alert(
+        'Permission Required',
+        'Permission to access camera is required!'
+      )
+      return
     }
 
-    // Launch camera
-    const result = await ImagePicker.launchCameraAsync({
-      allowsEditing: true,
-      aspect: [1, 1],
-      quality: 0.8,
-    });
+    try {
+      // Launch camera
+      const result = await ImagePicker.launchCameraAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        aspect: [1, 1],
+        quality: 0.8,
+      })
 
-    if (!result.canceled) {
-      setImageUri(result.assets[0].uri);
+      if (!result.canceled) {
+        setImageUri(result.assets[0].uri)
+      }
+    } catch (error) {
+      console.log('Camera error:', error)
+      Alert.alert(
+        'Camera Unavailable',
+        'Camera is not available on simulator. Please use a real device or select from gallery.'
+      )
     }
-  };
+  }
 
   const handleSubmit = async () => {
     if (!imageUri) {
-      Alert.alert('Error', 'Please select an image first');
-      return;
+      Alert.alert('Error', 'Please select an image first')
+      return
     }
 
     if (!caption.trim()) {
-      Alert.alert('Error', 'Please add a caption');
-      return;
+      Alert.alert('Error', 'Please add a caption')
+      return
     }
 
-    setLoading(true);
-    
+    setLoading(true)
+
     try {
-      // Call the parent function to handle adding the image
+      console.log('Starting image upload to Appwrite...')
+
+      // Upload image to Appwrite Storage first
+      const uploadResult = await galleryService.uploadImage(imageUri)
+
+      console.log('Upload result:', uploadResult)
+
+      // Check if uploadResult exists and handle different response types
+      if (!uploadResult) {
+        Alert.alert('Upload Error', 'No response from upload service')
+        return
+      }
+
+      if (uploadResult.error) {
+        Alert.alert('Upload Error', uploadResult.error)
+        return
+      }
+
+      if (!uploadResult.success) {
+        Alert.alert('Upload Error', 'Upload failed - no success response')
+        return
+      }
+
+      // Call the parent function with the uploaded file info
       await onAddImage({
-        uri: imageUri,
+        fileId: uploadResult.fileId,
+        fileName: uploadResult.fileName,
         caption: caption.trim(),
-      });
-      
+        size: uploadResult.size,
+      })
+
       // Reset form and close modal
-      setImageUri(null);
-      setCaption('');
-      setModalVisible(false);
+      setImageUri(null)
+      setCaption('')
+      setModalVisible(false)
+
+      Alert.alert('Success', 'Image uploaded successfully!')
     } catch (error) {
-      Alert.alert('Error', 'Failed to add image');
+      console.error('Error in handleSubmit:', error)
+      Alert.alert('Error', 'Failed to upload image: ' + error.message)
     } finally {
-      setLoading(false);
+      setLoading(false)
     }
-  };
+  }
 
   const handleCancel = () => {
-    setImageUri(null);
-    setCaption('');
-    setModalVisible(false);
-  };
+    setImageUri(null)
+    setCaption('')
+    setModalVisible(false)
+  }
 
   return (
     <Modal
-      animationType="slide"
+      animationType='slide'
       transparent={true}
       visible={modalVisible}
       onRequestClose={handleCancel}
@@ -116,7 +166,7 @@ const AddImageModal = ({
           {imageUri ? (
             <View style={styles.imagePreview}>
               <Image source={{ uri: imageUri }} style={styles.previewImage} />
-              <TouchableOpacity 
+              <TouchableOpacity
                 style={styles.changeImageBtn}
                 onPress={() => setImageUri(null)}
               >
@@ -135,7 +185,7 @@ const AddImageModal = ({
               <TouchableOpacity style={styles.imageBtn} onPress={pickImage}>
                 <Text style={styles.imageBtnText}>📱 Gallery</Text>
               </TouchableOpacity>
-              
+
               <TouchableOpacity style={styles.imageBtn} onPress={takePhoto}>
                 <Text style={styles.imageBtnText}>📸 Camera</Text>
               </TouchableOpacity>
@@ -145,7 +195,7 @@ const AddImageModal = ({
           {/* Caption Input */}
           <TextInput
             style={styles.input}
-            placeholder="Add a caption..."
+            placeholder='Add a caption...'
             value={caption}
             onChangeText={setCaption}
             multiline
@@ -154,28 +204,28 @@ const AddImageModal = ({
 
           {/* Action Buttons */}
           <View style={styles.actionButtons}>
-            <TouchableOpacity 
-              style={styles.cancelButton} 
+            <TouchableOpacity
+              style={styles.cancelButton}
               onPress={handleCancel}
             >
               <Text style={styles.cancelButtonText}>Cancel</Text>
             </TouchableOpacity>
-            
-            <TouchableOpacity 
-              style={[styles.submitButton, loading && styles.disabledButton]} 
+
+            <TouchableOpacity
+              style={[styles.submitButton, loading && styles.disabledButton]}
               onPress={handleSubmit}
               disabled={loading}
             >
               <Text style={styles.submitButtonText}>
-                {loading ? 'Adding...' : 'Add Image'}
+                {loading ? 'Uploading...' : 'Add Image'}
               </Text>
             </TouchableOpacity>
           </View>
         </View>
       </View>
     </Modal>
-  );
-};
+  )
+}
 
 const styles = StyleSheet.create({
   overlay: {
@@ -287,6 +337,6 @@ const styles = StyleSheet.create({
   disabledButton: {
     backgroundColor: '#ccc',
   },
-});
+})
 
-export default AddImageModal;
+export default AddImageModal
